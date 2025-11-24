@@ -1,0 +1,43 @@
+[
+  {
+    "id": "1763902857169",
+    "name": "Mazen",
+    "fullName": "Mazen Almasry",
+    "email": "mazenalmasry123456789@gmail.com",
+    "age": 22,
+    "country": "مصر",
+    "balance": 10,
+    "status": "active",
+    "joinDate": "2025-11-23",
+    "pendingDeposit": false,
+    "lastDepositDate": "2025-11-23"
+  },
+  {
+    "id": "1763904222062",
+    "name": "mohamed",
+    "fullName": "mohamed",
+    "email": "mazenalmasssry@gmail.com",
+    "age": 20,
+    "country": "مصر",
+    "balance": 100,
+    "status": "active",
+    "joinDate": "2025-11-23",
+    "pendingDeposit": false,
+    "profits": 0,
+    "lastProfitCalculationDate": "2025-11-24",
+    "lastDepositDate": "2025-11-24",
+    "withdrawalPeriod": 1
+  },
+  {
+    "id": "1763946297228",
+    "name": "momo",
+    "fullName": "momo",
+    "email": "aigarfes@gmail.com",
+    "age": 18,
+    "country": "قطر",
+    "balance": 0,
+    "status": "active",
+    "joinDate": "2025-11-24",
+    "pendingDeposit": false
+  }
+]

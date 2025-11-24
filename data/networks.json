@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "name": "TRC20",
+    "address": "ugiuygloujhfuyfjbcfvktyhgfdiktgd",
+    "enabled": true
+  },
+  {
+    "id": "2",
+    "name": "ERC20",
+    "address": "",
+    "enabled": true
+  },
+  {
+    "id": "3",
+    "name": "BEP20",
+    "address": "",
+    "enabled": true
+  }
+]
