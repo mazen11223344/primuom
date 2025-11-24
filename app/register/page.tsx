@@ -54,22 +54,25 @@ export default function RegisterPage() {
       return
     }
 
-    // محاكاة تأخير الشبكة
-    await new Promise(resolve => setTimeout(resolve, 500))
+    try {
+      const user = await register(
+        formData.fullName,
+        formData.email,
+        age,
+        formData.country,
+        formData.password
+      )
 
-    const user = await register(
-      formData.fullName,
-      formData.email,
-      age,
-      formData.country,
-      formData.password
-    )
-
-    if (user) {
-      setCurrentUser(user)
-      router.push('/account')
-    } else {
-      setError('البريد الإلكتروني مستخدم بالفعل')
+      if (user) {
+        setCurrentUser(user)
+        router.push('/account')
+      } else {
+        setError('البريد الإلكتروني مستخدم بالفعل أو حدث خطأ في إنشاء الحساب')
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('Registration error:', error)
+      setError('حدث خطأ في إنشاء الحساب. يرجى المحاولة مرة أخرى')
       setLoading(false)
     }
   }

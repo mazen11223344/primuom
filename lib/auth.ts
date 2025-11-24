@@ -77,15 +77,21 @@ export async function getUsers(): Promise<UserData[]> {
   return []
 }
 
-export async function saveUsers(users: UserData[]) {
+export async function saveUsers(users: UserData[]): Promise<boolean> {
   try {
-    await fetch('/api/users', {
+    const response = await fetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'save', data: { users } })
     })
+    if (response.ok) {
+      const result = await response.json()
+      return result.success === true
+    }
+    return false
   } catch (error) {
     console.error('Error saving users:', error)
+    return false
   }
 }
 
@@ -169,15 +175,21 @@ async function saveUserPasswords(passwords: Record<string, string>) {
   }
 }
 
-async function setUserPassword(userId: string, password: string) {
+async function setUserPassword(userId: string, password: string): Promise<boolean> {
   try {
-    await fetch('/api/passwords', {
+    const response = await fetch('/api/passwords', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'set', data: { userId, password } })
     })
+    if (response.ok) {
+      const result = await response.json()
+      return result.success === true
+    }
+    return false
   } catch (error) {
     console.error('Error setting password:', error)
+    return false
   }
 }
 
@@ -209,41 +221,60 @@ const adminUser: User = {
 export async function register(fullName: string, email: string, age: number, country: string, password: string): Promise<User | null> {
   if (typeof window === 'undefined') return null
   
-  const users = await getUsers()
-  // التحقق من عدم وجود إيميل مكرر
-  if (users.some(u => u.email === email)) {
+  try {
+    const users = await getUsers()
+    // التحقق من عدم وجود إيميل مكرر
+    if (users.some(u => u.email === email)) {
+      return null
+    }
+
+    const newUser: UserData = {
+      id: Date.now().toString(),
+      name: fullName.split(' ')[0] || fullName,
+      fullName,
+      email,
+      age,
+      country,
+      balance: 0,
+      profits: 0,
+      status: 'active',
+      joinDate: new Date().toISOString().split('T')[0],
+      pendingDeposit: false,
+      withdrawalPeriod: 30
+    }
+
+    users.push(newUser)
+    const saveResult = await saveUsers(users)
+    
+    if (!saveResult) {
+      console.error('Failed to save users')
+      return null
+    }
+
+    // حفظ كلمة المرور على السيرفر
+    try {
+      const passwordResult = await setUserPassword(newUser.id, password)
+      if (!passwordResult) {
+        console.error('Failed to save password')
+        // لا نعيد null هنا لأن المستخدم تم إنشاؤه بالفعل
+      }
+    } catch (error) {
+      console.error('Error setting password:', error)
+      // لا نعيد null هنا لأن المستخدم تم إنشاؤه بالفعل
+    }
+
+    return {
+      id: newUser.id,
+      email: newUser.email,
+      role: 'user',
+      name: newUser.name,
+      fullName: newUser.fullName,
+      age: newUser.age,
+      country: newUser.country
+    }
+  } catch (error) {
+    console.error('Error in register:', error)
     return null
-  }
-
-  const newUser: UserData = {
-    id: Date.now().toString(),
-    name: fullName.split(' ')[0] || fullName,
-    fullName,
-    email,
-    age,
-    country,
-    balance: 0,
-    profits: 0,
-    status: 'active',
-    joinDate: new Date().toISOString().split('T')[0],
-    pendingDeposit: false,
-    withdrawalPeriod: 30
-  }
-
-  users.push(newUser)
-  await saveUsers(users)
-
-  // حفظ كلمة المرور على السيرفر
-  await setUserPassword(newUser.id, password)
-
-  return {
-    id: newUser.id,
-    email: newUser.email,
-    role: 'user',
-    name: newUser.name,
-    fullName: newUser.fullName,
-    age: newUser.age,
-    country: newUser.country
   }
 }
 

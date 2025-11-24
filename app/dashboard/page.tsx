@@ -21,12 +21,12 @@ export default function DashboardPage() {
       const totalBalance = usersData.reduce((sum: number, u: any) => sum + u.balance, 0)
       const totalInvestments = usersData.reduce((sum: number, u: any) => sum + (u.profits || 0), 0)
 
-      setStats({
-        totalUsers,
-        activeUsers,
-        totalBalance,
-        totalInvestments
-      })
+    setStats({
+      totalUsers,
+      activeUsers,
+      totalBalance,
+      totalInvestments
+    })
       setUsers(usersData)
     }
     loadData()
