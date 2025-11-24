@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readData, writeData } from '@/lib/storage'
+import type { UserData } from '@/lib/auth'
 
 const USERS_KEY = 'users'
 const USERS_FILE = 'users.json'
 
-async function readUsers() {
-  return readData(USERS_KEY, USERS_FILE, [])
+async function readUsers(): Promise<UserData[]> {
+  return readData<UserData[]>(USERS_KEY, USERS_FILE, [] as UserData[])
 }
 
-async function writeUsers(users: any[]) {
-  await writeData(USERS_KEY, USERS_FILE, users)
+async function writeUsers(users: UserData[]): Promise<void> {
+  await writeData<UserData[]>(USERS_KEY, USERS_FILE, users)
 }
 
 export async function GET() {

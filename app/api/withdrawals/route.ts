@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readData, writeData } from '@/lib/storage'
+import type { WithdrawalRequest } from '@/lib/auth'
 
 const WITHDRAWALS_KEY = 'withdrawals'
 const WITHDRAWALS_FILE = 'withdrawals.json'
 
-async function readWithdrawals() {
-  return readData(WITHDRAWALS_KEY, WITHDRAWALS_FILE, [])
+async function readWithdrawals(): Promise<WithdrawalRequest[]> {
+  return readData<WithdrawalRequest[]>(WITHDRAWALS_KEY, WITHDRAWALS_FILE, [] as WithdrawalRequest[])
 }
 
-async function writeWithdrawals(withdrawals: any[]) {
-  await writeData(WITHDRAWALS_KEY, WITHDRAWALS_FILE, withdrawals)
+async function writeWithdrawals(withdrawals: WithdrawalRequest[]): Promise<void> {
+  await writeData<WithdrawalRequest[]>(WITHDRAWALS_KEY, WITHDRAWALS_FILE, withdrawals)
 }
 
 export async function GET() {

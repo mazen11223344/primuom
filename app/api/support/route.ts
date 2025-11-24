@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readData, writeData } from '@/lib/storage'
+import type { SupportTicket } from '@/lib/auth'
 
 const SUPPORT_KEY = 'support_tickets'
 const SUPPORT_FILE = 'support.json'
 
-async function readSupportTickets(): Promise<any[]> {
-  return readData(SUPPORT_KEY, SUPPORT_FILE, [])
+async function readSupportTickets(): Promise<SupportTicket[]> {
+  return readData<SupportTicket[]>(SUPPORT_KEY, SUPPORT_FILE, [] as SupportTicket[])
 }
 
-async function writeSupportTickets(tickets: any[]) {
-  await writeData(SUPPORT_KEY, SUPPORT_FILE, tickets)
+async function writeSupportTickets(tickets: SupportTicket[]): Promise<void> {
+  await writeData<SupportTicket[]>(SUPPORT_KEY, SUPPORT_FILE, tickets)
 }
 
 export async function GET() {

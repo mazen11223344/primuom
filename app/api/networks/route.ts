@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readData, writeData } from '@/lib/storage'
+import type { DepositNetwork } from '@/lib/auth'
 
 const NETWORKS_KEY = 'networks'
 const NETWORKS_FILE = 'networks.json'
-const DEFAULT_NETWORKS = [
+const DEFAULT_NETWORKS: DepositNetwork[] = [
   { id: '1', name: 'TRC20', address: '', enabled: true },
   { id: '2', name: 'ERC20', address: '', enabled: true },
   { id: '3', name: 'BEP20', address: '', enabled: true }
 ]
 
-async function readNetworks() {
-  return readData(NETWORKS_KEY, NETWORKS_FILE, DEFAULT_NETWORKS)
+async function readNetworks(): Promise<DepositNetwork[]> {
+  return readData<DepositNetwork[]>(NETWORKS_KEY, NETWORKS_FILE, DEFAULT_NETWORKS)
 }
 
-async function writeNetworks(networks: any[]) {
-  await writeData(NETWORKS_KEY, NETWORKS_FILE, networks)
+async function writeNetworks(networks: DepositNetwork[]): Promise<void> {
+  await writeData<DepositNetwork[]>(NETWORKS_KEY, NETWORKS_FILE, networks)
 }
 
 export async function GET() {
