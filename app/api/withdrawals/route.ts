@@ -1,36 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
+import { readData, writeData } from '@/lib/storage'
 
-const dataDir = path.join(process.cwd(), 'data')
-const withdrawalsFile = path.join(dataDir, 'withdrawals.json')
+const WITHDRAWALS_KEY = 'withdrawals'
+const WITHDRAWALS_FILE = 'withdrawals.json'
 
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true })
+async function readWithdrawals() {
+  return readData(WITHDRAWALS_KEY, WITHDRAWALS_FILE, [])
 }
 
-function readWithdrawals() {
-  try {
-    if (fs.existsSync(withdrawalsFile)) {
-      const data = fs.readFileSync(withdrawalsFile, 'utf-8')
-      return JSON.parse(data)
-    }
-  } catch (error) {
-    console.error('Error reading withdrawals:', error)
-  }
-  return []
-}
-
-function writeWithdrawals(withdrawals: any[]) {
-  try {
-    fs.writeFileSync(withdrawalsFile, JSON.stringify(withdrawals, null, 2))
-  } catch (error) {
-    console.error('Error writing withdrawals:', error)
-  }
+async function writeWithdrawals(withdrawals: any[]) {
+  await writeData(WITHDRAWALS_KEY, WITHDRAWALS_FILE, withdrawals)
 }
 
 export async function GET() {
-  const withdrawals = readWithdrawals()
+  const withdrawals = await readWithdrawals()
   return NextResponse.json(withdrawals)
 }
 
@@ -39,24 +22,24 @@ export async function POST(request: NextRequest) {
   const { action, data } = body
 
   if (action === 'save') {
-    writeWithdrawals(data)
+    await writeWithdrawals(data)
     return NextResponse.json({ success: true })
   }
 
   if (action === 'create') {
-    const withdrawals = readWithdrawals()
+    const withdrawals = await readWithdrawals()
     withdrawals.push(data)
-    writeWithdrawals(withdrawals)
+    await writeWithdrawals(withdrawals)
     return NextResponse.json({ success: true, withdrawal: data })
   }
 
   if (action === 'update') {
     const { withdrawalId, status } = data
-    const withdrawals = readWithdrawals()
+    const withdrawals = await readWithdrawals()
     const withdrawalIndex = withdrawals.findIndex((w: any) => w.id === withdrawalId)
     if (withdrawalIndex !== -1) {
       withdrawals[withdrawalIndex].status = status
-      writeWithdrawals(withdrawals)
+      await writeWithdrawals(withdrawals)
       return NextResponse.json({ success: true, withdrawal: withdrawals[withdrawalIndex] })
     }
     return NextResponse.json({ success: false, error: 'Withdrawal not found' }, { status: 404 })

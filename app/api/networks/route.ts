@@ -1,41 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
+import { readData, writeData } from '@/lib/storage'
 
-const dataDir = path.join(process.cwd(), 'data')
-const networksFile = path.join(dataDir, 'networks.json')
+const NETWORKS_KEY = 'networks'
+const NETWORKS_FILE = 'networks.json'
+const DEFAULT_NETWORKS = [
+  { id: '1', name: 'TRC20', address: '', enabled: true },
+  { id: '2', name: 'ERC20', address: '', enabled: true },
+  { id: '3', name: 'BEP20', address: '', enabled: true }
+]
 
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true })
+async function readNetworks() {
+  return readData(NETWORKS_KEY, NETWORKS_FILE, DEFAULT_NETWORKS)
 }
 
-function readNetworks() {
-  try {
-    if (fs.existsSync(networksFile)) {
-      const data = fs.readFileSync(networksFile, 'utf-8')
-      return JSON.parse(data)
-    }
-  } catch (error) {
-    console.error('Error reading networks:', error)
-  }
-  // القيم الافتراضية
-  return [
-    { id: '1', name: 'TRC20', address: '', enabled: true },
-    { id: '2', name: 'ERC20', address: '', enabled: true },
-    { id: '3', name: 'BEP20', address: '', enabled: true }
-  ]
-}
-
-function writeNetworks(networks: any[]) {
-  try {
-    fs.writeFileSync(networksFile, JSON.stringify(networks, null, 2))
-  } catch (error) {
-    console.error('Error writing networks:', error)
-  }
+async function writeNetworks(networks: any[]) {
+  await writeData(NETWORKS_KEY, NETWORKS_FILE, networks)
 }
 
 export async function GET() {
-  const networks = readNetworks()
+  const networks = await readNetworks()
   return NextResponse.json(networks)
 }
 
@@ -44,17 +27,17 @@ export async function POST(request: NextRequest) {
   const { action, data } = body
 
   if (action === 'save') {
-    writeNetworks(data)
+    await writeNetworks(data)
     return NextResponse.json({ success: true })
   }
 
   if (action === 'update') {
     const { networkId, address } = data
-    const networks = readNetworks()
+    const networks = await readNetworks()
     const networkIndex = networks.findIndex((n: any) => n.id === networkId)
     if (networkIndex !== -1) {
       networks[networkIndex].address = address
-      writeNetworks(networks)
+      await writeNetworks(networks)
       return NextResponse.json({ success: true, network: networks[networkIndex] })
     }
     return NextResponse.json({ success: false, error: 'Network not found' }, { status: 404 })

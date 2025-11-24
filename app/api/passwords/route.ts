@@ -1,36 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
+import { readData, writeData } from '@/lib/storage'
 
-const dataDir = path.join(process.cwd(), 'data')
-const passwordsFile = path.join(dataDir, 'passwords.json')
+const PASSWORDS_KEY = 'passwords'
+const PASSWORDS_FILE = 'passwords.json'
 
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true })
+async function readPasswords(): Promise<Record<string, string>> {
+  return readData(PASSWORDS_KEY, PASSWORDS_FILE, {})
 }
 
-function readPasswords(): Record<string, string> {
-  try {
-    if (fs.existsSync(passwordsFile)) {
-      const data = fs.readFileSync(passwordsFile, 'utf-8')
-      return JSON.parse(data)
-    }
-  } catch (error) {
-    console.error('Error reading passwords:', error)
-  }
-  return {}
-}
-
-function writePasswords(passwords: Record<string, string>) {
-  try {
-    fs.writeFileSync(passwordsFile, JSON.stringify(passwords, null, 2))
-  } catch (error) {
-    console.error('Error writing passwords:', error)
-  }
+async function writePasswords(passwords: Record<string, string>) {
+  await writeData(PASSWORDS_KEY, PASSWORDS_FILE, passwords)
 }
 
 export async function GET() {
-  const passwords = readPasswords()
+  const passwords = await readPasswords()
   return NextResponse.json(passwords)
 }
 
@@ -39,27 +22,27 @@ export async function POST(request: NextRequest) {
   const { action, data } = body
 
   if (action === 'save') {
-    writePasswords(data)
+    await writePasswords(data)
     return NextResponse.json({ success: true })
   }
 
   if (action === 'get') {
     const { userId } = data
-    const passwords = readPasswords()
+    const passwords = await readPasswords()
     return NextResponse.json({ password: passwords[userId] || null })
   }
 
   if (action === 'set') {
     const { userId, password } = data
-    const passwords = readPasswords()
+    const passwords = await readPasswords()
     passwords[userId] = password
-    writePasswords(passwords)
+    await writePasswords(passwords)
     return NextResponse.json({ success: true })
   }
 
   if (action === 'verify') {
     const { userId, password } = data
-    const passwords = readPasswords()
+    const passwords = await readPasswords()
     return NextResponse.json({ valid: passwords[userId] === password })
   }
 

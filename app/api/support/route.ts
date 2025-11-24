@@ -1,36 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
+import { readData, writeData } from '@/lib/storage'
 
-const dataDir = path.join(process.cwd(), 'data')
-const supportFile = path.join(dataDir, 'support.json')
+const SUPPORT_KEY = 'support_tickets'
+const SUPPORT_FILE = 'support.json'
 
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true })
+async function readSupportTickets(): Promise<any[]> {
+  return readData(SUPPORT_KEY, SUPPORT_FILE, [])
 }
 
-function readSupportTickets(): any[] {
-  try {
-    if (fs.existsSync(supportFile)) {
-      const data = fs.readFileSync(supportFile, 'utf-8')
-      return JSON.parse(data)
-    }
-  } catch (error) {
-    console.error('Error reading support tickets:', error)
-  }
-  return []
-}
-
-function writeSupportTickets(tickets: any[]) {
-  try {
-    fs.writeFileSync(supportFile, JSON.stringify(tickets, null, 2))
-  } catch (error) {
-    console.error('Error writing support tickets:', error)
-  }
+async function writeSupportTickets(tickets: any[]) {
+  await writeData(SUPPORT_KEY, SUPPORT_FILE, tickets)
 }
 
 export async function GET() {
-  const tickets = readSupportTickets()
+  const tickets = await readSupportTickets()
   return NextResponse.json(tickets)
 }
 
@@ -39,7 +22,7 @@ export async function POST(request: NextRequest) {
   const { action, data } = body
 
   if (action === 'create') {
-    const tickets = readSupportTickets()
+    const tickets = await readSupportTickets()
     const ticket = {
       ...data,
       id: Date.now().toString(),
@@ -47,19 +30,19 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString()
     }
     tickets.push(ticket)
-    writeSupportTickets(tickets)
+    await writeSupportTickets(tickets)
     return NextResponse.json({ success: true, ticket })
   }
 
   if (action === 'reply') {
     const { ticketId, adminReply } = data
-    const tickets = readSupportTickets()
+    const tickets = await readSupportTickets()
     const ticketIndex = tickets.findIndex((t: any) => t.id === ticketId)
     if (ticketIndex !== -1) {
       tickets[ticketIndex].adminReply = adminReply
       tickets[ticketIndex].status = 'closed'
       tickets[ticketIndex].repliedAt = new Date().toISOString()
-      writeSupportTickets(tickets)
+      await writeSupportTickets(tickets)
       return NextResponse.json({ success: true, ticket: tickets[ticketIndex] })
     }
     return NextResponse.json({ success: false, error: 'Ticket not found' }, { status: 404 })
