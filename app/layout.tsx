@@ -10,8 +10,8 @@ const cairo = Cairo({
 })
 
 export const metadata: Metadata = {
-  title: 'Primuom - تطبيق ويب حديث',
-  description: 'تطبيق ويب حديث وجميل جاهز للنشر على Vercel',
+  title: 'Primuom - نظام استثماري متكامل',
+  description: 'نظام استثماري متكامل',
 }
 
 export default function RootLayout({
