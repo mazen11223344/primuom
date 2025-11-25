@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getCurrentUser, getUsers, getUserData, updateUserBalance, getDepositNetworks, saveDepositNetworks, getWithdrawalRequests, saveWithdrawalRequests, getSupportTickets, replyToSupportTicket, updateWithdrawalPeriod, UserData, DepositNetwork, WithdrawalRequest, SupportTicket } from '@/lib/auth'
-import Link from 'next/link'
+import { getCurrentUser, getUsers, getUserData, updateUserBalance, getDepositNetworks, saveDepositNetworks, getWithdrawalRequests, saveWithdrawalRequests, getSupportTickets, replyToSupportTicket, updateWithdrawalPeriod, deleteUserAccount, UserData, DepositNetwork, WithdrawalRequest, SupportTicket } from '@/lib/auth'
 
 export default function AdminPage() {
   const router = useRouter()
@@ -23,6 +22,7 @@ export default function AdminPage() {
   const [newNetworkAddress, setNewNetworkAddress] = useState('')
   const [replyingTicket, setReplyingTicket] = useState<string | null>(null)
   const [adminReply, setAdminReply] = useState('')
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -139,6 +139,19 @@ export default function AdminPage() {
       console.error('Error rejecting withdrawal:', error)
       alert('حدث خطأ أثناء رفض الطلب')
     }
+  }
+
+  const handleDeleteUser = async (targetUser: UserData) => {
+    if (!confirm(`هل أنت متأكد من حذف حساب ${targetUser.fullName}؟`)) return
+    setDeletingUserId(targetUser.id)
+    const success = await deleteUserAccount(targetUser.id)
+    if (success) {
+      await refreshData()
+      alert('تم حذف المستخدم بنجاح')
+    } else {
+      alert('حدث خطأ أثناء حذف المستخدم')
+    }
+    setDeletingUserId(null)
   }
 
   if (!user || user.role !== 'admin') {
@@ -371,7 +384,7 @@ export default function AdminPage() {
                         {u.lastDepositDate ? new Date(u.lastDepositDate).toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={() => {
                               setEditingUser(u.id)
@@ -389,6 +402,13 @@ export default function AdminPage() {
                             className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm"
                           >
                             تعديل المدة
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u)}
+                            disabled={deletingUserId === u.id}
+                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deletingUserId === u.id ? 'جاري الحذف...' : 'حذف الحساب'}
                           </button>
                         </div>
                       </td>

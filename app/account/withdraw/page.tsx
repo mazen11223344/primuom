@@ -18,6 +18,7 @@ export default function WithdrawPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [withdrawCheck, setWithdrawCheck] = useState<{ can: boolean; reason?: string }>({ can: false })
 
   useEffect(() => {
     const loadData = async () => {
@@ -31,10 +32,9 @@ export default function WithdrawPage() {
       setUserData(data)
 
       if (data) {
-        const withdrawCheck = await canWithdraw(currentUser.id)
-        if (!withdrawCheck.can) {
-          setError(withdrawCheck.reason || 'لا يمكنك السحب حالياً')
-        }
+        const withdrawStatus = await canWithdraw(currentUser.id)
+        setWithdrawCheck(withdrawStatus)
+        setError(withdrawStatus.can ? '' : withdrawStatus.reason || 'لا يمكنك السحب حالياً')
       }
     }
     loadData()
@@ -82,8 +82,8 @@ export default function WithdrawPage() {
     await new Promise(resolve => setTimeout(resolve, 500))
 
     // تحديد المبلغ من الرصيد أو الأرباح
-    let amountFromBalance = Math.min(amount, userData.balance)
-    let amountFromProfits = amount - amountFromBalance
+    const amountFromBalance = Math.min(amount, userData.balance)
+    const amountFromProfits = amount - amountFromBalance
     
     // إذا كان هناك أرباح، نخصم منها أولاً
     if (userData.profits > 0 && amountFromProfits > 0) {
@@ -137,18 +137,6 @@ export default function WithdrawPage() {
       </div>
     )
   }
-
-  const [withdrawCheck, setWithdrawCheck] = useState<{ can: boolean; reason?: string }>({ can: false })
-
-  useEffect(() => {
-    const loadWithdrawCheck = async () => {
-      if (user) {
-        const check = await canWithdraw(user.id)
-        setWithdrawCheck(check)
-      }
-    }
-    loadWithdrawCheck()
-  }, [user])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">

@@ -361,6 +361,23 @@ export async function addDeposit(userId: string, amount: number) {
   }
 }
 
+export async function deleteUserAccount(userId: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete',
+        data: { userId }
+      })
+    })
+    return response.ok
+  } catch (error) {
+    console.error('Error deleting user:', error)
+  }
+  return false
+}
+
 // حساب الأرباح اليومية (1% من رأس المال)
 export async function calculateDailyProfits(userId: string): Promise<number> {
   const user = await getUserData(userId)
