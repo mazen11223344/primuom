@@ -18,7 +18,8 @@ export default function WithdrawPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [withdrawCheck, setWithdrawCheck] = useState<{ can: boolean; reason?: string }>({ can: false })
+  type WithdrawStatus = { can: boolean; reason?: string; daysRemaining?: number; maxWithdrawableAmount?: number }
+  const [withdrawCheck, setWithdrawCheck] = useState<WithdrawStatus>({ can: false, maxWithdrawableAmount: 0 })
 
   useEffect(() => {
     const loadData = async () => {
