@@ -49,6 +49,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Ticket not found' }, { status: 404 })
   }
 
+  if (action === 'delete') {
+    const { ticketId } = data
+    const tickets = await readSupportTickets()
+    const ticketIndex = tickets.findIndex((t: any) => t.id === ticketId)
+    if (ticketIndex !== -1) {
+      tickets.splice(ticketIndex, 1)
+      await writeSupportTickets(tickets)
+      return NextResponse.json({ success: true })
+    }
+    return NextResponse.json({ success: false, error: 'Ticket not found' }, { status: 404 })
+  }
+
   return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 })
 }
 

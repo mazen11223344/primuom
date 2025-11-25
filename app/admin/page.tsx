@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getCurrentUser, getUsers, getUserData, updateUserBalance, getDepositNetworks, saveDepositNetworks, getWithdrawalRequests, saveWithdrawalRequests, getSupportTickets, replyToSupportTicket, updateWithdrawalPeriod, deleteUserAccount, UserData, DepositNetwork, WithdrawalRequest, SupportTicket } from '@/lib/auth'
+import { getCurrentUser, getUsers, getUserData, updateUserBalance, getDepositNetworks, saveDepositNetworks, getWithdrawalRequests, saveWithdrawalRequests, getSupportTickets, replyToSupportTicket, deleteSupportTicket, updateWithdrawalPeriod, deleteUserAccount, UserData, DepositNetwork, WithdrawalRequest, SupportTicket } from '@/lib/auth'
 
 export default function AdminPage() {
   const router = useRouter()
@@ -116,10 +116,23 @@ export default function AdminPage() {
   const handleRejectWithdrawal = async (requestId: string) => {
     const request = withdrawalRequests.find(r => r.id === requestId)
     if (request) {
-      // إعادة المبلغ للمستخدم
-      const user = await getUserData(request.userId)
-      if (user) {
-        await updateUserBalance(request.userId, user.balance + request.amount, false)
+      // إعادة المبلغ للمستخدم (الرصيد والأرباح) حسب التفاصيل المحفوظة
+      const users = await getUsers()
+      const userIndex = users.findIndex((u: UserData) => u.id === request.userId)
+      if (userIndex !== -1) {
+        // إعادة المبلغ من الأرباح
+        if (request.amountFromProfits) {
+          users[userIndex].profits = (users[userIndex].profits || 0) + request.amountFromProfits
+        }
+        // إعادة المبلغ من الرصيد
+        if (request.amountFromBalance) {
+          users[userIndex].balance = (users[userIndex].balance || 0) + request.amountFromBalance
+        }
+        // إذا لم تكن هناك تفاصيل محفوظة، نعيد المبلغ كله للأرباح (للتوافق مع الطلبات القديمة)
+        if (!request.amountFromProfits && !request.amountFromBalance) {
+          users[userIndex].profits = (users[userIndex].profits || 0) + request.amount
+        }
+        await saveUsers(users)
       }
     }
     try {
@@ -146,6 +159,14 @@ export default function AdminPage() {
     setDeletingUserId(targetUser.id)
     const success = await deleteUserAccount(targetUser.id)
     if (success) {
+      // إذا كان المستخدم المحذوف هو المستخدم الحالي، إرجاعه للصفحة الرئيسية
+      if (user && user.id === targetUser.id) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('currentUser')
+          router.push('/')
+          return
+        }
+      }
       await refreshData()
       alert('تم حذف المستخدم بنجاح')
     } else {
@@ -660,6 +681,21 @@ export default function AdminPage() {
                               {ticket.adminReply}
                             </div>
                           )}
+                          <button
+                            onClick={async () => {
+                              if (!confirm('هل أنت متأكد من حذف هذه الرسالة؟')) return
+                              const success = await deleteSupportTicket(ticket.id)
+                              if (success) {
+                                await refreshData()
+                                alert('تم حذف الرسالة بنجاح')
+                              } else {
+                                alert('حدث خطأ أثناء حذف الرسالة')
+                              }
+                            }}
+                            className="mt-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                          >
+                            حذف
+                          </button>
                         </td>
                       </tr>
                     ))

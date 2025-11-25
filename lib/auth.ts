@@ -57,6 +57,8 @@ export interface WithdrawalRequest {
   walletName: string
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string
+  amountFromProfits?: number
+  amountFromBalance?: number
 }
 
 // تخزين كلمات المرور محلياً (للمستخدمين فقط)
@@ -437,7 +439,7 @@ export async function addProfitsToCapital(userId: string): Promise<boolean> {
 }
 
 // التحقق من إمكانية السحب
-export async function canWithdraw(userId: string): Promise<{ can: boolean; reason?: string; daysRemaining?: number }> {
+export async function canWithdraw(userId: string): Promise<{ can: boolean; reason?: string; daysRemaining?: number; maxWithdrawableAmount?: number }> {
   const user = await getUserData(userId)
   if (!user) return { can: false, reason: 'المستخدم غير موجود' }
 
@@ -452,6 +454,20 @@ export async function canWithdraw(userId: string): Promise<{ can: boolean; reaso
   const lastDeposit = new Date(user.lastDepositDate)
   const today = new Date()
   const daysDiff = Math.floor((today.getTime() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
+  
+  // 6 شهور = 180 يوم
+  const capitalLockPeriod = 180
+  const canWithdrawCapital = daysDiff >= capitalLockPeriod
+  
+  // يمكن سحب الأرباح فقط إذا لم تمر 6 شهور
+  const profits = user.profits || 0
+  
+  if (!canWithdrawCapital && profits <= 0) {
+    const daysRemainingForCapital = capitalLockPeriod - daysDiff
+    return { can: false, reason: `لا يمكنك سحب رأس المال قبل ${capitalLockPeriod} يوم من آخر إيداع. متبقي ${daysRemainingForCapital} يوم. يمكنك سحب الأرباح فقط.`, daysRemaining: daysRemainingForCapital }
+  }
+
+  // إذا كان يمكن سحب رأس المال، نتحقق من مدة السحب العادية
   const withdrawalPeriod = user.withdrawalPeriod || 30
   const daysRemaining = withdrawalPeriod - daysDiff
 
@@ -459,11 +475,21 @@ export async function canWithdraw(userId: string): Promise<{ can: boolean; reaso
     return { can: false, reason: `يجب أن تمر ${withdrawalPeriod} يوم من آخر إيداع. متبقي ${daysRemaining} يوم`, daysRemaining }
   }
 
-  if (user.balance <= 0 && (user.profits || 0) <= 0) {
+  if (user.balance <= 0 && profits <= 0) {
     return { can: false, reason: 'رصيدك غير كافٍ' }
   }
 
-  return { can: true, daysRemaining: 0 }
+  // تحديد الحد الأقصى للسحب
+  let maxWithdrawableAmount = 0
+  if (canWithdrawCapital) {
+    // يمكن سحب كل شيء (رأس المال + الأرباح)
+    maxWithdrawableAmount = user.balance + profits
+  } else {
+    // يمكن سحب الأرباح فقط
+    maxWithdrawableAmount = profits
+  }
+
+  return { can: true, daysRemaining: 0, maxWithdrawableAmount }
 }
 
 // إنشاء طلب سحب
@@ -477,9 +503,25 @@ export async function createWithdrawalRequest(userId: string, amount: number, ne
   if (!user) {
     return null
   }
-  const totalAvailable = user.balance + (user.profits || 0)
-  if (totalAvailable < amount) {
+  
+  // التحقق من الحد الأقصى للسحب
+  const maxAmount = canWithdrawResult.maxWithdrawableAmount || 0
+  if (amount > maxAmount) {
     return null
+  }
+  
+  // التحقق من عدم سحب رأس المال قبل 6 شهور
+  const lastDeposit = new Date(user.lastDepositDate)
+  const today = new Date()
+  const daysDiff = Math.floor((today.getTime() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
+  const capitalLockPeriod = 180 // 6 شهور
+  
+  if (daysDiff < capitalLockPeriod) {
+    // يمكن سحب الأرباح فقط
+    const profits = user.profits || 0
+    if (amount > profits) {
+      return null
+    }
   }
 
   const request: WithdrawalRequest = {
@@ -506,16 +548,36 @@ export async function createWithdrawalRequest(userId: string, amount: number, ne
       const userIndex = users.findIndex((u: any) => u.id === userId)
       if (userIndex !== -1) {
         let remainingAmount = amount
+        let amountFromProfits = 0
+        let amountFromBalance = 0
+        const lastDeposit = new Date(users[userIndex].lastDepositDate)
+        const today = new Date()
+        const daysDiff = Math.floor((today.getTime() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
+        const capitalLockPeriod = 180 // 6 شهور
+        
         // خصم من الأرباح أولاً
         if (users[userIndex].profits > 0) {
-          const fromProfits = Math.min(remainingAmount, users[userIndex].profits)
-          users[userIndex].profits -= fromProfits
-          remainingAmount -= fromProfits
+          amountFromProfits = Math.min(remainingAmount, users[userIndex].profits)
+          users[userIndex].profits -= amountFromProfits
+          remainingAmount -= amountFromProfits
         }
-        // خصم من الرصيد
-        if (remainingAmount > 0) {
-          users[userIndex].balance -= remainingAmount
+        
+        // خصم من الرصيد فقط إذا مرت 6 شهور
+        if (remainingAmount > 0 && daysDiff >= capitalLockPeriod) {
+          amountFromBalance = remainingAmount
+          users[userIndex].balance -= amountFromBalance
+        } else if (remainingAmount > 0) {
+          // لا يمكن سحب رأس المال قبل 6 شهور
+          // إعادة الأرباح المخصومة
+          users[userIndex].profits += amountFromProfits
+          await saveUsers(users)
+          return null
         }
+        
+        // حفظ تفاصيل الخصم في طلب السحب
+        request.amountFromProfits = amountFromProfits
+        request.amountFromBalance = amountFromBalance
+        
         await saveUsers(users)
       }
       return request
@@ -577,6 +639,23 @@ export async function replyToSupportTicket(ticketId: string, adminReply: string)
     return response.ok
   } catch (error) {
     console.error('Error replying to support ticket:', error)
+  }
+  return false
+}
+
+export async function deleteSupportTicket(ticketId: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/support', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete',
+        data: { ticketId }
+      })
+    })
+    return response.ok
+  } catch (error) {
+    console.error('Error deleting support ticket:', error)
   }
   return false
 }

@@ -35,6 +35,10 @@ export default function WithdrawPage() {
         const withdrawStatus = await canWithdraw(currentUser.id)
         setWithdrawCheck(withdrawStatus)
         setError(withdrawStatus.can ? '' : withdrawStatus.reason || 'لا يمكنك السحب حالياً')
+        // تحديث الحد الأقصى للسحب
+        if (withdrawStatus.can && withdrawStatus.maxWithdrawableAmount !== undefined) {
+          setFormData(prev => ({ ...prev, amount: '' }))
+        }
       }
     }
     loadData()
@@ -59,9 +63,17 @@ export default function WithdrawPage() {
       return
     }
 
-    const totalAvailable = userData.balance + (userData.profits || 0)
-    if (amount > totalAvailable) {
-      setError(`المبلغ أكبر من رصيدك المتاح. الرصيد المتاح: $${totalAvailable.toLocaleString()}`)
+    // التحقق من الحد الأقصى للسحب بناءً على القواعد الجديدة
+    const withdrawCheckResult = await canWithdraw(user.id)
+    if (!withdrawCheckResult.can) {
+      setError(withdrawCheckResult.reason || 'لا يمكنك السحب حالياً')
+      setLoading(false)
+      return
+    }
+    
+    const maxWithdrawable = withdrawCheckResult.maxWithdrawableAmount || 0
+    if (amount > maxWithdrawable) {
+      setError(`المبلغ أكبر من المبلغ المتاح للسحب. الحد الأقصى: $${maxWithdrawable.toLocaleString()}`)
       setLoading(false)
       return
     }
@@ -80,25 +92,6 @@ export default function WithdrawPage() {
 
     // محاكاة تأخير الشبكة
     await new Promise(resolve => setTimeout(resolve, 500))
-
-    // تحديد المبلغ من الرصيد أو الأرباح
-    const amountFromBalance = Math.min(amount, userData.balance)
-    const amountFromProfits = amount - amountFromBalance
-    
-    // إذا كان هناك أرباح، نخصم منها أولاً
-    if (userData.profits > 0 && amountFromProfits > 0) {
-      const users = await getUsers()
-      const userIndex = users.findIndex((u: any) => u.id === user.id)
-      if (userIndex !== -1) {
-        users[userIndex].profits = Math.max(0, (users[userIndex].profits || 0) - amountFromProfits)
-        if (amountFromBalance > 0) {
-          users[userIndex].balance -= amountFromBalance
-        }
-        await saveUsers(users)
-      }
-    } else if (amountFromBalance > 0) {
-      await updateUserBalance(user.id, userData.balance - amountFromBalance, false)
-    }
 
     const request = await createWithdrawalRequest(
       user.id,
@@ -222,7 +215,9 @@ export default function WithdrawPage() {
                     placeholder="0.00"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    الحد الأقصى: ${(userData.balance + (userData.profits || 0)).toLocaleString()}
+                    {withdrawCheck.can && withdrawCheck.maxWithdrawableAmount !== undefined
+                      ? `الحد الأقصى: $${withdrawCheck.maxWithdrawableAmount.toLocaleString()}`
+                      : `الأرباح المتاحة: $${(userData.profits || 0).toLocaleString()}`}
                   </p>
                 </div>
 
@@ -290,6 +285,8 @@ export default function WithdrawPage() {
             شروط السحب
           </h3>
           <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-sm list-disc list-inside">
+            <li>يمكنك سحب الأرباح فقط قبل مرور 6 شهور من آخر إيداع</li>
+            <li>يمكنك سحب رأس المال بعد مرور 6 شهور (180 يوم) من آخر إيداع</li>
             <li>يجب أن تمر 30 يوم على الأقل من آخر إيداع</li>
             <li>يجب ألا يكون هناك إيداع معلق في حسابك</li>
             <li>سيتم مراجعة طلبك من قبل الإدارة قبل التحويل</li>
