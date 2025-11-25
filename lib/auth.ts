@@ -451,7 +451,7 @@ export async function canWithdraw(userId: string): Promise<{ can: boolean; reaso
     return { can: false, reason: 'لم تقم بأي إيداع بعد' }
   }
 
-  const lastDeposit = new Date(user.lastDepositDate)
+  const lastDeposit = new Date(user.lastDepositDate || user.joinDate)
   const today = new Date()
   const daysDiff = Math.floor((today.getTime() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
   
@@ -511,7 +511,7 @@ export async function createWithdrawalRequest(userId: string, amount: number, ne
   }
   
   // التحقق من عدم سحب رأس المال قبل 6 شهور
-  const lastDeposit = new Date(user.lastDepositDate)
+  const lastDeposit = new Date(user.lastDepositDate || user.joinDate)
   const today = new Date()
   const daysDiff = Math.floor((today.getTime() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
   const capitalLockPeriod = 180 // 6 شهور
@@ -550,7 +550,7 @@ export async function createWithdrawalRequest(userId: string, amount: number, ne
         let remainingAmount = amount
         let amountFromProfits = 0
         let amountFromBalance = 0
-        const lastDeposit = new Date(users[userIndex].lastDepositDate)
+        const lastDeposit = new Date(users[userIndex].lastDepositDate || users[userIndex].joinDate)
         const today = new Date()
         const daysDiff = Math.floor((today.getTime() - lastDeposit.getTime()) / (1000 * 60 * 60 * 24))
         const capitalLockPeriod = 180 // 6 شهور
